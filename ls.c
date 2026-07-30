@@ -1,4 +1,3 @@
-#include <stddef.h>
 #include <stdio.h>
 #include <dirent.h>
 #include <time.h>
@@ -19,7 +18,7 @@ void mode_string(mode_t mode, char *str) {
 	str[1] = (mode & S_IRUSR) ? 'r' : '-';
 	str[2] = (mode & S_IWUSR) ? 'w' : '-';
 	str[3] = (mode & S_IXUSR) ? 'x' : '-';
-	str[4] = (mode & S_IRUSR) ? 'r' : '-';
+	str[4] = (mode & S_IRGRP) ? 'r' : '-';
 	str[5] = (mode & S_IWGRP) ? 'w' : '-';
 	str[6] = (mode & S_IXGRP) ? 'x' : '-';
 	str[7] = (mode & S_IROTH) ? 'r' : '-';
@@ -41,7 +40,7 @@ void print_long(const char *dir, const char *name) {
 	mode_string(st.st_mode, modes);
 
 	struct passwd *pw = getpwuid(st.st_uid);
-	struct group *gr = getgrgid(st.st_uid);
+	struct group *gr = getgrgid(st.st_gid);
 	const char *user = pw ? pw->pw_name : "?";
 	const char *group = gr ?gr->gr_name : "?";
 
