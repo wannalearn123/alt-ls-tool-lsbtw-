@@ -5,15 +5,17 @@
 #include <sys/stat.h>
 #include <pwd.h>
 #include <grp.h>
+#include <stdlib.h> /* qsort, free */
+#include <string.h> /* strcmp, strdup */
 
 void mode_string(mode_t mode, char *str) {
-	if (S_ISDIR(mode))  	str[0] = 'd';
-	else if (S_ISLNK(mode)) str[0] = 'l';
-	else if (S_ISCHR(mode)) str[0] = 'c';
-	else if (S_ISBLK(mode)) str[0] = 'b';
-	else if (S_ISFIFO(mode)) str[0] = 'p';
-	else if (S_ISSOCK(mode)) str[0] = 's';
-	else 		         	str[0] = '-';
+	if (S_ISDIR(mode))  		str[0] = 'd';
+	else if (S_ISLNK(mode)) 	str[0] = 'l';
+	else if (S_ISCHR(mode)) 	str[0] = 'c';
+	else if (S_ISBLK(mode)) 	str[0] = 'b';
+	else if (S_ISFIFO(mode)) 	str[0] = 'p';
+	else if (S_ISSOCK(mode)) 	str[0] = 's';
+	else 		         		str[0] = '-';
 
 	str[1] = (mode & S_IRUSR) ? 'r' : '-';
 	str[2] = (mode & S_IWUSR) ? 'w' : '-';
@@ -53,6 +55,12 @@ void print_long(const char *dir, const char *name) {
                user, group, (long)st.st_size, timebuf, name);
 }
 
+/* qsort comparator: array elements are char *, so qsort hands us
+   pointers to those elements (char **). Dereference and strcmp. */
+int cmp(const void *a, const void *b) {
+	return strcmp(*(char *const *)a, *(char *const *)b);
+}
+
 int show_all = 0;
 int long_format = 0;
 
@@ -80,16 +88,27 @@ int main (int argc, char *argv[]) {
 		return 1;
 	}
 
-	struct dirent *entry;
-	while((entry = readdir(dir)) != NULL) {
-		if (!show_all && entry->d_name[0] == '.') continue;
-		if (long_format) 
-			print_long(path, entry->d_name);
-		else 
-			printf("%s ", entry->d_name);
-	}
+	char *names[1000];             /* stack array of name pointers */
+	int count = 0;
 
+	struct dirent *entry;
+	while ((entry = readdir(dir)) != NULL) {
+		if (!show_all && entry->d_name[0] == '.') continue;
+		/* d_name is a reused buffer, so copy the name to the heap */
+		names[count++] = strdup(entry->d_name);
+	}
 	closedir(dir);
+
+	/* sort the collected names alphabetically */
+	qsort(names, count, sizeof(names[0]), cmp);
+
+	for (int i = 0; i < count; i++) {
+		if (long_format) 
+			print_long(path, names[i]);
+		else 
+			printf("%s ", names[i]);
+		free(names[i]);            /* return each strdup'd heap copy */
+	}
 
 	return 0;
 }
